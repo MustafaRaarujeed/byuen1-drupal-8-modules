@@ -111,7 +111,7 @@ class RevisionController extends ControllerBase {
     // Gets the full language name the user is on.
     $langname = $this->language_manager->getCurrentLanguage()->getName();
     // Sets the title of the revision log for the media and indicates which language translation it is for.
-    $build['title'] = $this->t('@langname revisions for %title', ['@langname' => $langname, '%title' => $media->label()]);
+    $build['#title'] = $this->t('@langname revisions for %title', ['@langname' => $langname, '%title' => $media->label()]);
     // Sets the amount of columns for the table from the render array.
     $header = [$this->t('Revision')];
     // Creates a new storage instance of the Media entity.
