@@ -12,6 +12,8 @@ use Drupal\Core\Database\Connection;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\media\MediaInterface;
 use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Render\RendererInterface;
+use Drupal\Core\Url;
 
 /**
  * Returns a response for a media entity route on revisions.
@@ -45,6 +47,13 @@ class RevisionController extends ControllerBase {
    * @var \Drupal\Core\Database\Connection
    */
   protected $database;
+
+  /**
+   * The renderer service.
+   *
+   * @var \Drupal\Core\Render\RendererInterface
+   */
+  protected $renderer;
   
   /**
    * Creates the RevisionController object, extracts the services we need, and passes it to the constructor.
@@ -57,8 +66,9 @@ class RevisionController extends ControllerBase {
     $language_manager = $container->get('language_manager');
     $current_route_match = $container->get('current_route_match');
     $database = $container->get('database');
+    $renderer_media = $container->get('renderer');
 
-    return new static($entity_manager, $language_manager, $current_route_match, $database);
+    return new static($entity_manager, $language_manager, $current_route_match, $database, $renderer_media);
   }  
 
   /**
@@ -73,11 +83,12 @@ class RevisionController extends ControllerBase {
    * @param \Drupal\Core\Database\Connection $database
    *   The database service.
    */
-  public function __construct(EntityTypeManagerInterface $entity_manager, LanguageManager $language_manager, CurrentRouteMatch $current_route_match, Connection $database) {
+  public function __construct(EntityTypeManagerInterface $entity_manager, LanguageManager $language_manager, CurrentRouteMatch $current_route_match, Connection $database, RendererInterface $renderer) {
     $this->entity_manager = $entity_manager;
     $this->language_manager = $language_manager;
     $this->current_route_match = $current_route_match;
     $this->database = $database;
+    $this->renderer = $renderer;
   }
   
   /**
@@ -114,8 +125,10 @@ class RevisionController extends ControllerBase {
       $changed = $this->getChangedTimestamp($mid, $revision, $language);
       // Filters revisions that are relevant to the language the user is on.
       if ($revision->hasTranslation($language) && $revision->getTranslation($language)->isRevisionTranslationAffected()) {
-        $username = $revision->getRevisionUser()->realname;
-        $username2 = $revision->getRevisionUser()->name->value;
+        $username = [
+          '#theme' => 'username',
+          '#account' => $revision->getRevisionUser(),
+        ];
         $date = date('m/d/Y - H:i', $changed);
         $row = [];
         $column = [
@@ -124,8 +137,7 @@ class RevisionController extends ControllerBase {
  		        '#template' => '{% trans %}{{ date }} by {{ username }}{% endtrans %}{% if message %}<p class="revision-log">{{ message }}</p>{% endif %}',
  		        '#context' => [
  		          'date' => $date,
-              // Replace $username2 with $username if the users on your site are configured with a realname field (e.g. 'Bruce Yuen' instead of 'bruce.yuen').
- 		          'username' => $username2,
+ 		          'username' => $this->renderer->renderPlain($username),
  		          'message' => ['#markup' => $revision->revision_log_message->value, '#allowed_tags' => Xss::getHtmlTagList()],
  		        ],
  		      ],
